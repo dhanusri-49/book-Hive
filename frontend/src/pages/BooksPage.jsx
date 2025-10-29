@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { booksAPI } from '../services/api';
+import { booksAPI, wishlistAPI, ordersAPI } from '../services/api';
 import BookForm from '../components/BookForm';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 function BooksPage() {
   const [books, setBooks] = useState([]);
@@ -9,9 +11,15 @@ function BooksPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
   const [filterGenre, setFilterGenre] = useState('all');
+  const [wishlist, setWishlist] = useState([]);
+  const { isAdmin, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchBooks();
+    if (isAuthenticated() && !isAdmin()) {
+      fetchWishlist();
+    }
   }, []);
 
   const fetchBooks = async () => {
@@ -25,6 +33,86 @@ function BooksPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWishlist = async () => {
+    try {
+      const response = await wishlistAPI.get();
+      setWishlist(response.data.wishlist.map(book => book._id));
+    } catch (err) {
+      console.error('Failed to fetch wishlist:', err);
+    }
+  };
+
+  const handleAddToWishlist = async (bookId) => {
+    try {
+      await wishlistAPI.add(bookId);
+      setWishlist([...wishlist, bookId]);
+      alert('✅ Book added to your TBR list!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add to wishlist');
+      console.error(err);
+    }
+  };
+
+  const handleRemoveFromWishlist = async (bookId) => {
+    try {
+      await wishlistAPI.remove(bookId);
+      setWishlist(wishlist.filter(id => id !== bookId));
+      alert('🗑️ Book removed from your TBR list');
+    } catch (err) {
+      alert('Failed to remove from wishlist');
+      console.error(err);
+    }
+  };
+
+  const handleBuyNow = async (book) => {
+    if (book.stock === 0) {
+      alert('❌ Sorry, this book is out of stock!');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Buy "${book.title}" for $${book.price.toFixed(2)}?\n\nThis will create an order immediately.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      console.log('🛍️ Creating order for book:', book);
+      
+      const orderData = {
+        books: [
+          {
+            book: book._id,
+            quantity: 1
+          }
+        ]
+      };
+
+      const response = await ordersAPI.create(orderData);
+      console.log('✅ Order created:', response.data);
+      
+      alert(`✅ Order placed successfully!
+
+Order Total: $${book.price.toFixed(2)}
+Status: Pending
+
+You can view your order in "My Orders" page.`);
+      
+      // Refresh books to update stock
+      fetchBooks();
+      
+      // Navigate to orders page after 1 second
+      setTimeout(() => {
+        navigate('/orders');
+      }, 1000);
+      
+    } catch (err) {
+      console.error('❌ Order creation failed:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to create order';
+      alert(`❌ Failed to place order:\n${errorMsg}`);
     }
   };
 
@@ -69,9 +157,11 @@ function BooksPage() {
     <div className="container">
       <div className="page-header">
         <h2>📚 Books Collection</h2>
-        <button className="btn btn-success" onClick={() => setShowForm(true)}>
-          ➕ Add New Book
-        </button>
+        {isAdmin() && (
+          <button className="btn btn-success" onClick={() => setShowForm(true)}>
+            ➕ Add New Book
+          </button>
+        )}
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -122,12 +212,47 @@ function BooksPage() {
                 </p>
               </div>
               <div className="card-footer">
-                <button className="btn btn-primary" onClick={() => handleEdit(book)}>
-                  ✏️ Edit
-                </button>
-                <button className="btn btn-danger" onClick={() => handleDelete(book._id)}>
-                  🗑️ Delete
-                </button>
+                {isAdmin() ? (
+                  <>
+                    <button className="btn btn-primary" onClick={() => handleEdit(book)}>
+                      ✏️ Edit
+                    </button>
+                    <button className="btn btn-danger" onClick={() => handleDelete(book._id)}>
+                      🗑️ Delete
+                    </button>
+                  </>
+                ) : isAuthenticated() ? (
+                  <>
+                    {wishlist.includes(book._id) ? (
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={() => handleRemoveFromWishlist(book._id)}
+                        style={{ marginRight: '0.5rem' }}
+                      >
+                        ❤️ In TBR
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => handleAddToWishlist(book._id)}
+                        style={{ marginRight: '0.5rem' }}
+                      >
+                        📖 Add to TBR
+                      </button>
+                    )}
+                    <button 
+                      className="btn btn-success" 
+                      onClick={() => handleBuyNow(book)}
+                      disabled={book.stock === 0}
+                    >
+                      🛍️ Buy Now
+                    </button>
+                  </>
+                ) : (
+                  <span style={{ color: '#666', fontSize: '0.9rem' }}>
+                    🔒 Login to purchase
+                  </span>
+                )}
               </div>
             </div>
           ))}

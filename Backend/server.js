@@ -4,9 +4,10 @@ import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 
 // Routes
+import authRoutes from "./routes/authRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
-import userRoutes from "./routes/userRoutes.js"; // ✅ Add this
+import userRoutes from "./routes/userRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -27,9 +28,10 @@ app.get("/", (req, res) => {
 });
 
 // API Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/users", userRoutes); // ✅ Mount user routes
+app.use("/api/users", userRoutes);
 
 // 404 handler
 app.use((req, res) => {

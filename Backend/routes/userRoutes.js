@@ -1,11 +1,21 @@
 import express from "express";
 import userController from "../controllers/userController.js";
+import { verifyToken, requireAdmin } from "../middleware/auth.js";
+import { addToWishlist, removeFromWishlist, getWishlist } from "../controllers/userController/wishlist.js";
 
 const router = express.Router();
 
-router.post("/", userController.registerUser);      // Register a new user
-router.get("/", userController.getUsers);           // Get all users
-router.put("/:id", userController.updateUser);      // Update user by ID
-router.delete("/:id", userController.deleteUser);   // Delete user by ID
+// Public route - anyone can view users
+router.get("/", userController.getUsers);
+
+// Wishlist routes - protected (users can manage their own wishlist)
+router.get("/wishlist", verifyToken, getWishlist);
+router.post("/wishlist", verifyToken, addToWishlist);
+router.delete("/wishlist/:bookId", verifyToken, removeFromWishlist);
+
+// Protected routes - only admins can modify
+router.post("/", requireAdmin, userController.registerUser);
+router.put("/:id", requireAdmin, userController.updateUser);
+router.delete("/:id", requireAdmin, userController.deleteUser);
 
 export default router;

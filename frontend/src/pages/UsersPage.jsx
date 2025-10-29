@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usersAPI } from '../services/api';
 import UserForm from '../components/UserForm';
+import { useAuth } from '../context/AuthContext';
 
 function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -9,6 +10,7 @@ function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [filterRole, setFilterRole] = useState('all');
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     fetchUsers();
@@ -69,9 +71,11 @@ function UsersPage() {
     <div className="container">
       <div className="page-header">
         <h2>👥 Users Management</h2>
-        <button className="btn btn-success" onClick={() => setShowForm(true)}>
-          ➕ Add New User
-        </button>
+        {isAdmin() && (
+          <button className="btn btn-success" onClick={() => setShowForm(true)}>
+            ➕ Add New User
+          </button>
+        )}
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -122,19 +126,27 @@ function UsersPage() {
                   </td>
                   <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td>
-                    <button 
-                      className="btn btn-primary" 
-                      style={{ marginRight: '0.5rem' }}
-                      onClick={() => handleEdit(user)}
-                    >
-                      ✏️ Edit
-                    </button>
-                    <button 
-                      className="btn btn-danger"
-                      onClick={() => handleDelete(user._id)}
-                    >
-                      🗑️ Delete
-                    </button>
+                    {isAdmin() ? (
+                      <>
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ marginRight: '0.5rem' }}
+                          onClick={() => handleEdit(user)}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button 
+                          className="btn btn-danger"
+                          onClick={() => handleDelete(user._id)}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </>
+                    ) : (
+                      <span style={{ color: '#666', fontSize: '0.85rem' }}>
+                        🔒 View-only
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

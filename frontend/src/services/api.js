@@ -28,3 +28,10 @@ export const usersAPI = {
   update: (id, user) => axios.put(`${API_URL}/users/${id}`, user),
   delete: (id) => axios.delete(`${API_URL}/users/${id}`)
 };
+
+// Wishlist API
+export const wishlistAPI = {
+  get: () => axios.get(`${API_URL}/users/wishlist`),
+  add: (bookId) => axios.post(`${API_URL}/users/wishlist`, { bookId }),
+  remove: (bookId) => axios.delete(`${API_URL}/users/wishlist/${bookId}`)
+};
